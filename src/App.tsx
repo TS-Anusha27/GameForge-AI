@@ -108,7 +108,7 @@ export function App() {
           <HomePage
             onCreateWithPrompt={handleCreateWithPrompt}
             onOpenProject={handleSelectProject}
-            onExploreExamples={() => setActiveTab('templates')}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             recentProjects={projects.slice(0, 4)}
           />
         )}
@@ -116,6 +116,7 @@ export function App() {
         {activeTab === 'create' && (
           <CreateGameView
             initialPrompt={initialCreatePrompt}
+            autoStart={Boolean(initialCreatePrompt)}
             onGameCreated={(newProj) => {
               reloadProjects();
               setActiveProjectId(newProj.id);

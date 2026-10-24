@@ -1,14 +1,19 @@
 import { Project, ProjectCheckpoint } from '../types/game';
-import { showcaseProjects } from '../templates';
+import { chennaiDetectiveProject } from '../projects/chennaiDetective';
+import { solaria3DProject } from '../templates/solaria3D';
+import { cyberpunkOdysseyProject } from '../templates/cyberpunkOdyssey';
+import { snakesAndLaddersProject } from '../templates/snakesAndLadders';
+import { galacticShooterProject } from '../templates/galacticShooter';
 
-const STORAGE_KEY_PROJECTS = 'gameforge_ai_projects_v1';
-const STORAGE_KEY_ACTIVE_PROJECT = 'gameforge_ai_active_project_id';
-const STORAGE_KEY_SETTINGS = 'gameforge_ai_settings_v1';
+const STORAGE_KEY_PROJECTS = 'gameforge_ai_projects_v2';
+const STORAGE_KEY_ACTIVE_PROJECT = 'gameforge_ai_active_project_id_v2';
+const STORAGE_KEY_SETTINGS = 'gameforge_ai_settings_v2';
 
 export interface UserSettings {
   apiKeyGemini: string;
   apiKeyOpenAI: string;
-  selectedProvider: 'auto' | 'gemini' | 'openai' | 'local_agent';
+  selectedProvider: 'openai' | 'gemini' | 'anthropic' | 'custom';
+  selectedModel: string;
   computeQuotaMax: number;
   computeQuotaUsed: number;
   theme: 'light' | 'dark' | 'system';
@@ -19,13 +24,22 @@ export interface UserSettings {
 const defaultSettings: UserSettings = {
   apiKeyGemini: '',
   apiKeyOpenAI: '',
-  selectedProvider: 'auto',
+  selectedProvider: 'openai',
+  selectedModel: 'gpt-4o',
   computeQuotaMax: 1000,
-  computeQuotaUsed: 42,
+  computeQuotaUsed: 15,
   theme: 'light',
   enableSoundEffects: true,
   autoSaveCheckpoints: true
 };
+
+const defaultProjects: Project[] = [
+  chennaiDetectiveProject,
+  cyberpunkOdysseyProject,
+  solaria3DProject,
+  galacticShooterProject,
+  snakesAndLaddersProject
+];
 
 export class StorageService {
   public static getProjects(): Project[] {
@@ -40,9 +54,9 @@ export class StorageService {
     } catch (e) {
       console.error('Error reading projects from storage:', e);
     }
-    // Seed with showcase projects if empty
-    StorageService.saveProjects(showcaseProjects);
-    return showcaseProjects;
+
+    StorageService.saveProjects(defaultProjects);
+    return defaultProjects;
   }
 
   public static saveProjects(projects: Project[]): void {
@@ -88,7 +102,7 @@ export class StorageService {
     const copy: Project = {
       ...JSON.parse(JSON.stringify(orig)),
       id: 'proj-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 6),
-      name: `${orig.name} (Copy)`,
+      name: `${orig.name} (Forked)`,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       version: 'v1.0.0-fork'
@@ -104,29 +118,13 @@ export class StorageService {
       return active;
     }
     const projects = StorageService.getProjects();
-    const defaultId = projects[0]?.id || 'template-snakes-ladders';
+    const defaultId = projects[0]?.id || chennaiDetectiveProject.id;
     StorageService.setActiveProjectId(defaultId);
     return defaultId;
   }
 
   public static setActiveProjectId(id: string): void {
     localStorage.setItem(STORAGE_KEY_ACTIVE_PROJECT, id);
-  }
-
-  public static addCheckpoint(projectId: string, checkpoint: ProjectCheckpoint): Project | null {
-    const project = StorageService.getProjectById(projectId);
-    if (!project) return null;
-
-    const updatedCheckpoints = [checkpoint, ...(project.checkpoints || [])];
-    const updatedProject: Project = {
-      ...project,
-      version: checkpoint.version,
-      checkpoints: updatedCheckpoints,
-      updatedAt: Date.now()
-    };
-
-    StorageService.saveProject(updatedProject);
-    return updatedProject;
   }
 
   public static revertToCheckpoint(projectId: string, checkpointId: string): Project | null {
@@ -136,7 +134,6 @@ export class StorageService {
     const checkpoint = project.checkpoints?.find(c => c.id === checkpointId);
     if (!checkpoint || !checkpoint.filesSnapshot) return null;
 
-    // Create a new checkpoint recording the rollback
     const rollbackCheckpoint: ProjectCheckpoint = {
       id: 'chk-rollback-' + Date.now(),
       version: checkpoint.version + '-restored',

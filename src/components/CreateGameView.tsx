@@ -19,12 +19,14 @@ import confetti from 'canvas-confetti';
 
 interface CreateGameViewProps {
   initialPrompt?: string;
+  autoStart?: boolean;
   onGameCreated: (project: Project) => void;
   onOpenStudio: () => void;
 }
 
 export const CreateGameView: React.FC<CreateGameViewProps> = ({
   initialPrompt = '',
+  autoStart = false,
   onGameCreated,
   onOpenStudio
 }) => {
@@ -37,6 +39,51 @@ export const CreateGameView: React.FC<CreateGameViewProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [createdProject, setCreatedProject] = useState<Project | null>(null);
+
+  React.useEffect(() => {
+    if (initialPrompt) {
+      setPrompt(initialPrompt);
+      if (autoStart) {
+        // Kick off autonomous generation immediately
+        handleStartGenerationWithPrompt(initialPrompt);
+      }
+    }
+  }, [initialPrompt]);
+
+  const handleStartGenerationWithPrompt = async (targetPrompt: string) => {
+    if (!targetPrompt.trim()) return;
+
+    setIsGenerating(true);
+    setCreatedProject(null);
+
+    try {
+      const is3D = targetPrompt.toLowerCase().includes('3d') || selectedDim === '3D';
+      const project = await AIAgentOrchestrator.generateGame(
+        targetPrompt.trim(),
+        {
+          genre: selectedGenre,
+          dimension: is3D ? '3D' : selectedDim,
+          engine: is3D ? 'three-3d' : selectedEngine
+        },
+        (_task, allTasks) => {
+          setTasks([...allTasks]);
+        }
+      );
+
+      setCreatedProject(project);
+      onGameCreated(project);
+
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch (err) {
+      console.error('Error during generation:', err);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleStartGeneration = async () => {
     if (!prompt.trim()) return;

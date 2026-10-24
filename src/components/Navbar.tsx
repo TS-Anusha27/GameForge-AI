@@ -13,9 +13,12 @@ import {
   Menu, 
   X,
   Play,
-  ChevronDown
+  ChevronDown,
+  Cpu,
+  Key
 } from 'lucide-react';
 import { Project } from '../types/game';
+import { AIProviderService } from '../services/aiProvider';
 
 export type NavigationTab = 
   | 'home' 
@@ -49,17 +52,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
+  const hasKey = AIProviderService.hasValidKey();
+  const aiConfig = AIProviderService.getConfig();
+
   const navLinks: { id: NavigationTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'home', label: 'Home', icon: <Sparkles size={16} /> },
-    { id: 'create', label: 'Create Game', icon: <Sparkles size={16} /> },
-    { id: 'studio', label: 'Playable Studio', icon: <Play size={16} /> },
-    { id: 'templates', label: 'Templates', icon: <Layers size={16} /> },
-    { id: 'character-studio', label: 'Character Studio', icon: <UserPlus size={16} /> },
-    { id: 'level-editor', label: 'World Editor', icon: <MapPin size={16} /> },
-    { id: 'testing-qa', label: 'Testing & QA', icon: <CheckCircle2 size={16} /> },
-    { id: 'export-publish', label: 'Export & Android', icon: <Share2 size={16} /> },
-    { id: 'projects', label: 'My Projects', icon: <FolderGit2 size={16} /> },
-    { id: 'docs', label: 'Docs', icon: <HelpCircle size={16} /> }
+    { id: 'home', label: 'Create', icon: <Sparkles size={15} /> },
+    { id: 'studio', label: 'Playable Studio', icon: <Play size={15} /> },
+    { id: 'templates', label: 'Showcase', icon: <Layers size={15} /> },
+    { id: 'level-editor', label: 'World Editor', icon: <MapPin size={15} /> },
+    { id: 'character-studio', label: 'Characters', icon: <UserPlus size={15} /> },
+    { id: 'testing-qa', label: 'Testing & QA', icon: <CheckCircle2 size={15} /> },
+    { id: 'export-publish', label: 'Export & Android', icon: <Share2 size={15} /> },
+    { id: 'projects', label: 'Library', icon: <FolderGit2 size={15} /> },
+    { id: 'docs', label: 'Docs', icon: <HelpCircle size={15} /> }
   ];
 
   return (
@@ -67,11 +72,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Brand Logo */}
       <div className="nav-brand" onClick={() => onSelectTab('home')}>
         <div className="brand-logo-icon">
-          <Gamepad2 size={20} />
+          <Gamepad2 size={18} />
         </div>
         <div className="brand-text-wrap">
           <span className="brand-name">GameForge AI</span>
-          <span className="brand-tagline">Your Imagination. A Playable Reality.</span>
+          <span className="brand-tagline">Playable Reality Studio</span>
         </div>
       </div>
 
@@ -94,6 +99,25 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Actions */}
       <div className="nav-actions">
+        {/* Real AI Model Status Badge */}
+        <button
+          onClick={onOpenSettings}
+          className={`model-status-pill ${hasKey ? 'active' : 'local'}`}
+          title={hasKey ? `Connected to ${aiConfig.provider.toUpperCase()} (${aiConfig.model})` : 'Running in local mode. Click to configure API key.'}
+        >
+          {hasKey ? (
+            <>
+              <span className="status-dot green" />
+              <span className="model-label">{aiConfig.model}</span>
+            </>
+          ) : (
+            <>
+              <span className="status-dot amber" />
+              <span className="model-label">Local Engine</span>
+            </>
+          )}
+        </button>
+
         {/* Active Project Dropdown */}
         {activeProject && (
           <div style={{ position: 'relative' }}>
@@ -102,12 +126,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
               title="Switch Active Project"
             >
-              <Gamepad2 size={14} color="#4f46e5" />
-              <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <Gamepad2 size={14} color="var(--brand-primary)" />
+              <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {activeProject.name}
               </span>
               <span className="badge badge-primary" style={{ padding: '1px 5px', fontSize: '0.65rem' }}>
-                {activeProject.version}
+                {activeProject.engine}
               </span>
               <ChevronDown size={14} />
             </button>
@@ -119,7 +143,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   top: '100%',
                   right: 0,
                   marginTop: 6,
-                  width: 260,
+                  width: 280,
                   background: 'var(--bg-surface)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: 12,
@@ -131,7 +155,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   gap: 4
                 }}
               >
-                <div style={{ padding: '6px 8px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                <div style={{ padding: '6px 8px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                   ACTIVE PROJECTS
                 </div>
                 {allProjects.map(p => (
@@ -160,7 +184,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       {p.name}
                     </span>
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {p.version}
+                      {p.engine}
                     </span>
                   </button>
                 ))}
@@ -173,7 +197,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button 
           className="btn btn-secondary btn-sm" 
           onClick={onOpenSettings}
-          title="Studio Settings & Compute Quota"
+          title="Studio Settings & AI Keys"
         >
           <Settings size={16} />
         </button>
@@ -181,7 +205,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Mobile Hamburger Toggle */}
         <button 
           className="btn btn-secondary btn-sm" 
-          style={{ display: 'none' }}
           id="mobileMenuToggle"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
@@ -191,3 +214,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </nav>
   );
 };
+export default Navbar;
